@@ -26,10 +26,20 @@ namespace Nostrivia {
       _runner = go.AddComponent<Runner>();
     }
 
-    /// <summary>Cancels the currently running tween (if any) started via UITween on this target.</summary>
+    /// <summary>Cancels the tween identified by the given coroutine handle, if it is still running,
+    /// and removes its bookkeeping entry from the active-tween table.</summary>
     public static void Kill(Coroutine handle) {
       if (handle == null || _runner == null) return;
       _runner.StopCoroutine(handle);
+
+      object key = null;
+      foreach (var kv in _active) {
+        if (kv.Value == handle) {
+          key = kv.Key;
+          break;
+        }
+      }
+      if (key != null) _active.Remove(key);
     }
 
     static void CancelExisting(object target) {
@@ -65,8 +75,13 @@ namespace Nostrivia {
       Vector2 from = rt.anchoredPosition;
       float t = 0f;
       while (t < dur) {
-        t += Time.unscaledDeltaTime;
-        float p = ease != null ? ease(t / dur) : Mathf.Clamp01(t / dur);
+        if (rt == null) {
+          _active.Remove(rt);
+          yield break;
+        }
+        t = Mathf.Min(t + Time.unscaledDeltaTime, dur);
+        float p = Mathf.Clamp01(t / dur);
+        p = ease != null ? ease(p) : p;
         rt.anchoredPosition = Vector2.LerpUnclamped(from, to, p);
         yield return null;
       }
@@ -93,8 +108,13 @@ namespace Nostrivia {
       float from = cg.alpha;
       float t = 0f;
       while (t < dur) {
-        t += Time.unscaledDeltaTime;
-        float p = ease != null ? ease(t / dur) : Mathf.Clamp01(t / dur);
+        if (cg == null) {
+          _active.Remove(cg);
+          yield break;
+        }
+        t = Mathf.Min(t + Time.unscaledDeltaTime, dur);
+        float p = Mathf.Clamp01(t / dur);
+        p = ease != null ? ease(p) : p;
         cg.alpha = Mathf.LerpUnclamped(from, toAlpha, p);
         yield return null;
       }
