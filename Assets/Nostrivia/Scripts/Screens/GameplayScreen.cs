@@ -50,6 +50,8 @@ namespace Nostrivia
 
             if (submitButton != null) submitButton.onClick.AddListener(OnSubmitOrResults);
             if (exitButton != null) exitButton.onClick.AddListener(RaiseExit);
+            // Timer.Elapsed is intentionally NOT subscribed: per the design, reaching 0 just stops
+            // the timer (no auto-advance). Wire timer.Elapsed here if time-out navigation is added.
             if (timer != null) timer.StartFrom(30f);
         }
 

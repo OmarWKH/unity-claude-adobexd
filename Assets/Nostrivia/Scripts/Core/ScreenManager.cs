@@ -51,6 +51,13 @@ namespace Nostrivia {
 
     Stage _currentStage;
 
+    /// <summary>
+    /// True while a screen transition (SlideUp / DualSlide / replace) is animating.
+    /// New navigation is ignored until it completes, which prevents a re-entrancy
+    /// bug where an overlay opened mid-slide gets orphaned and left un-closeable.
+    /// </summary>
+    bool _transitioning;
+
     /// <summary>A full-screen RectTransform holding one screen and zero or more overlays on top of it.</summary>
     class Stage {
       public RectTransform Root;
@@ -130,6 +137,7 @@ namespace Nostrivia {
     /// (whole overlay incl. backdrop moves as one unit — no alpha fade).
     /// </summary>
     public void ShowOverlay(OverlayId id) {
+      if (_transitioning) return; // don't open overlays into a stage that's mid-transition
       if (!_overlays.TryGetValue(id, out var root)) {
         Debug.LogError($"[ScreenManager] ShowOverlay({id}): overlay not registered.");
         return;
@@ -148,6 +156,7 @@ namespace Nostrivia {
 
     /// <summary>Slides the overlay back down off-screen, then deactivates and parks it for reuse.</summary>
     public void HideOverlay(OverlayId id) {
+      if (_transitioning) return;
       if (!_overlays.TryGetValue(id, out var root)) {
         Debug.LogError($"[ScreenManager] HideOverlay({id}): overlay not registered.");
         return;
@@ -185,6 +194,7 @@ namespace Nostrivia {
     }
 
     public void TransitionToScreen(ScreenId id, TransitionKind kind) {
+      if (_transitioning) return;
       if (!_screens.TryGetValue(id, out var incoming)) {
         Debug.LogError($"[ScreenManager] TransitionToScreen({id}): screen not registered.");
         return;
@@ -202,6 +212,7 @@ namespace Nostrivia {
 
     /// <summary>Incoming screen slides up from below into the current Stage, covering (and then retiring) the outgoing screen.</summary>
     void DoSlideUp(ScreenId id, GameObject incoming) {
+      _transitioning = true;
       var stage = _currentStage;
       var outgoingRoot = stage.ScreenRoot;
       var outgoingOverlays = new List<OverlayId>(stage.OverlayIds);
@@ -214,13 +225,19 @@ namespace Nostrivia {
 
       UITween.MoveAnchored(incomingRt, Vector2.zero, screenTransitionDuration, Resolve(screenTransitionEase), () => {
         if (outgoingRoot != null && outgoingRoot != incoming) ParkInPool(outgoingRoot);
+        // Park every overlay currently on the stage (the snapshot may be stale if input leaked
+        // through, so iterate the live set too) so none is orphaned above the incoming screen.
         foreach (var oid in outgoingOverlays) {
+          if (_overlays.TryGetValue(oid, out var overlayRoot)) ParkInPool(overlayRoot);
+        }
+        foreach (var oid in new List<OverlayId>(stage.OverlayIds)) {
           if (_overlays.TryGetValue(oid, out var overlayRoot)) ParkInPool(overlayRoot);
         }
         stage.OverlayIds.Clear();
         stage.ScreenId = id;
         stage.ScreenRoot = incoming;
         incomingRt.SetAsFirstSibling(); // back to the normal bottom-of-stage position for future overlays
+        _transitioning = false;
       });
     }
 
@@ -231,6 +248,7 @@ namespace Nostrivia {
     /// once its slide-out completes.
     /// </summary>
     void DoDualSlide(ScreenId id, GameObject incoming) {
+      _transitioning = true;
       float h = CanvasHeight;
       var oldStage = _currentStage;
 
@@ -249,7 +267,9 @@ namespace Nostrivia {
       UITween.MoveAnchored(oldStage.Root, new Vector2(0f, -h), screenTransitionDuration, Resolve(screenTransitionEase), () => {
         RetireStage(oldStage);
       });
-      UITween.MoveAnchored(newStage.Root, Vector2.zero, screenTransitionDuration, Resolve(screenTransitionEase));
+      UITween.MoveAnchored(newStage.Root, Vector2.zero, screenTransitionDuration, Resolve(screenTransitionEase), () => {
+        _transitioning = false;
+      });
     }
 
     /// <summary>
@@ -263,10 +283,12 @@ namespace Nostrivia {
     /// the registry points at the fresh instance.
     /// </summary>
     public void ReplaceCurrentScreenDualSlide(ScreenId id, GameObject freshInstance) {
+      if (_transitioning) { if (freshInstance != null) Destroy(freshInstance); return; }
       if (freshInstance == null) {
         Debug.LogError($"[ScreenManager] ReplaceCurrentScreenDualSlide({id}): null instance.");
         return;
       }
+      _transitioning = true;
       float h = CanvasHeight;
       var oldStage = _currentStage;
       var oldScreenRoot = oldStage.ScreenRoot;
@@ -296,7 +318,9 @@ namespace Nostrivia {
         if (oldScreenRoot != null) Destroy(oldScreenRoot);
         Destroy(oldStage.Root.gameObject);
       });
-      UITween.MoveAnchored(newStage.Root, Vector2.zero, screenTransitionDuration, Resolve(screenTransitionEase));
+      UITween.MoveAnchored(newStage.Root, Vector2.zero, screenTransitionDuration, Resolve(screenTransitionEase), () => {
+        _transitioning = false;
+      });
     }
 
     // ---------------------------------------------------------------

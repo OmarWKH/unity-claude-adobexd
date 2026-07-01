@@ -13,6 +13,9 @@ namespace Nostrivia
 
         [Header("Screens")]
         [SerializeField] HomeScreen home;
+        [Tooltip("The INITIAL gameplay instance. Registered at Start; read only in Start. After a " +
+                 "Play Again this instance is destroyed and replaced — the ScreenManager registry, " +
+                 "not this field, is the source of truth thereafter, so do not read it post-Start.")]
         [SerializeField] GameplayScreen gameplay;
         [Tooltip("Prefab used to spawn a fresh gameplay instance for the Results -> Play Again dual-slide.")]
         [SerializeField] GameObject gameplayPrefab;
@@ -26,6 +29,12 @@ namespace Nostrivia
 
         void Start()
         {
+            if (screenManager == null)
+            {
+                Debug.LogError("[NostriviaApp] screenManager is not assigned; navigation will not work.");
+                return;
+            }
+
             // Register with the manager.
             if (home != null) screenManager.RegisterScreen(ScreenId.Home, home.gameObject);
             if (gameplay != null) screenManager.RegisterScreen(ScreenId.Gameplay, gameplay.gameObject);
