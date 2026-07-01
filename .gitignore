@@ -69,3 +69,14 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Superpowers SDD scratch (task briefs, reports, ledger)
+.superpowers/
+
+# Agent browser/session scratch
+.playwright-mcp/
+/xd-*.png
+
+# Claude Code local settings & Unity MCP file-bridge scratch
+.claude/
+.unity-bridge/
