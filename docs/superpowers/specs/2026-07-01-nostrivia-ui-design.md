@@ -1,7 +1,7 @@
 # Nostrivia UI — Design Spec
 
 **Date:** 2026-07-01
-**Status:** Approved (pending written-spec review)
+**Status:** Implemented (all 9 screens + transitions Play-verified; pending designer items in `Assets/Nostrivia/_DesignRef/OpenQuestions.md`: background grid asset, AudioMixer asset creation, transition-timing/blink-color confirmation)
 **Goal:** Faithfully recreate the designer's Adobe XD prototype for "Nostrivia" in Unity
 uGUI — the UI layout and the transitions. Gameplay is out of scope beyond what the prototype
 shows (a single hardcoded question).
