@@ -14,6 +14,7 @@ namespace Nostrivia
 
         [Header("Screens")]
         [SerializeField] HomeScreen home;
+        [SerializeField] GameplayScreen gameplay;
 
         [Header("Overlays")]
         [SerializeField] SettingsOverlay settings;
@@ -22,13 +23,14 @@ namespace Nostrivia
         {
             // Register with the manager.
             if (home != null) screenManager.RegisterScreen(ScreenId.Home, home.gameObject);
+            if (gameplay != null) screenManager.RegisterScreen(ScreenId.Gameplay, gameplay.gameObject);
             if (settings != null) screenManager.RegisterOverlay(OverlayId.Settings, settings.gameObject);
 
             // Wire navigation.
             if (home != null)
             {
                 home.SettingsClicked += () => screenManager.ShowOverlay(OverlayId.Settings);
-                // PlayClicked wired when Gameplay comes online (Task 18).
+                home.PlayClicked += () => screenManager.TransitionToScreen(ScreenId.Gameplay, TransitionKind.SlideUp);
             }
             if (settings != null)
                 settings.CloseClicked += () => screenManager.HideOverlay(OverlayId.Settings);
