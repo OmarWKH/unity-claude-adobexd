@@ -252,6 +252,53 @@ namespace Nostrivia {
       UITween.MoveAnchored(newStage.Root, Vector2.zero, screenTransitionDuration, Resolve(screenTransitionEase));
     }
 
+    /// <summary>
+    /// Dual-slide to a FRESHLY-PROVIDED instance of a screen, replacing the
+    /// currently-registered one. The old stage (old screen + its overlays)
+    /// slides out the bottom while the new stage (the fresh instance) slides in
+    /// from the top — this is the "Results → Play Again" case, where the old
+    /// gameplay window and the results popup slide out together while a brand
+    /// new gameplay window drops in. On completion the old screen instance is
+    /// destroyed, the old overlays are parked back in the pool for reuse, and
+    /// the registry points at the fresh instance.
+    /// </summary>
+    public void ReplaceCurrentScreenDualSlide(ScreenId id, GameObject freshInstance) {
+      if (freshInstance == null) {
+        Debug.LogError($"[ScreenManager] ReplaceCurrentScreenDualSlide({id}): null instance.");
+        return;
+      }
+      float h = CanvasHeight;
+      var oldStage = _currentStage;
+      var oldScreenRoot = oldStage.ScreenRoot;
+
+      var newStage = CreateStage();
+      var rt = (RectTransform)freshInstance.transform;
+      rt.SetParent(newStage.Root, false);
+      rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+      rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+      rt.anchoredPosition = Vector2.zero;
+      freshInstance.SetActive(true);
+      newStage.ScreenId = id;
+      newStage.ScreenRoot = freshInstance;
+      newStage.Root.anchoredPosition = new Vector2(0f, h);
+
+      _screens[id] = freshInstance;   // registry now points at the fresh instance
+      _currentStage = newStage;
+
+      UITween.MoveAnchored(oldStage.Root, new Vector2(0f, -h), screenTransitionDuration, Resolve(screenTransitionEase), () => {
+        // Park the old overlays (registered, reused) but DESTROY the replaced screen.
+        for (int i = oldStage.Root.childCount - 1; i >= 0; i--) {
+          var child = oldStage.Root.GetChild(i).gameObject;
+          if (child == oldScreenRoot) continue;
+          ParkInPool(child);
+        }
+        oldStage.OverlayIds.Clear();
+        if (oldScreenRoot != null) Destroy(oldScreenRoot);
+        Destroy(oldStage.Root.gameObject);
+      });
+      UITween.MoveAnchored(newStage.Root, Vector2.zero, screenTransitionDuration, Resolve(screenTransitionEase));
+    }
+
     // ---------------------------------------------------------------
     // Stage plumbing
     // ---------------------------------------------------------------
