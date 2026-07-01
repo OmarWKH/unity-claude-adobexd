@@ -166,6 +166,24 @@ namespace Nostrivia {
     // Screen transitions
     // ---------------------------------------------------------------
 
+    /// <summary>
+    /// Instantly places a registered screen into the current Stage with no
+    /// animation. Used to show the entry screen at startup.
+    /// </summary>
+    public void ShowScreen(ScreenId id) {
+      if (!_screens.TryGetValue(id, out var root)) {
+        Debug.LogError($"[ScreenManager] ShowScreen({id}): screen not registered.");
+        return;
+      }
+      var rt = (RectTransform)root.transform;
+      rt.SetParent(_currentStage.Root, false);
+      rt.SetAsFirstSibling();
+      rt.anchoredPosition = Vector2.zero;
+      root.SetActive(true);
+      _currentStage.ScreenId = id;
+      _currentStage.ScreenRoot = root;
+    }
+
     public void TransitionToScreen(ScreenId id, TransitionKind kind) {
       if (!_screens.TryGetValue(id, out var incoming)) {
         Debug.LogError($"[ScreenManager] TransitionToScreen({id}): screen not registered.");
