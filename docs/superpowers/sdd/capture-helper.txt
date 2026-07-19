@@ -1,0 +1,39 @@
+REUSABLE UI CAPTURE — paste as Unity_RunCommand Code. Non-destructive: temporarily flips the
+Overlay canvas to ScreenSpaceCamera via a throwaway camera + runtime RenderTexture, renders a
+portrait 1080x1920, downscales to 540x960 PNG at <repoRoot>/Temp/uicap.png, then restores Overlay.
+Then Read the PNG. NO AssetDatabase ops (folder deletes prompt → "user interactions not supported").
+Do NOT touch the Game View from RunCommand (GetWindow / selectedSizeIndex / Repaint → breaks MCP harness).
+
+using UnityEngine;
+using System.IO;
+internal class CommandScript : IRunCommand
+{
+    public void Execute(ExecutionResult result)
+    {
+        var canvas = GameObject.Find("Canvas").GetComponent<Canvas>();
+        var savedMode = canvas.renderMode; var savedCam = canvas.worldCamera;
+        var rt = new RenderTexture(1080, 1920, 24, RenderTextureFormat.ARGB32); rt.Create();
+        var camGo = new GameObject("~TmpCapCam");
+        var cam = camGo.AddComponent<Camera>();
+        cam.orthographic = true; cam.clearFlags = CameraClearFlags.SolidColor;
+        cam.backgroundColor = new Color(0.5f, 0.5f, 0.5f, 1f);
+        cam.cullingMask = ~0; cam.targetTexture = rt; cam.nearClipPlane = 0.01f; cam.farClipPlane = 1000f;
+        camGo.transform.position = new Vector3(0, 0, -100);
+        canvas.renderMode = RenderMode.ScreenSpaceCamera; canvas.worldCamera = cam; canvas.planeDistance = 50;
+        Canvas.ForceUpdateCanvases(); cam.Render();
+        RenderTexture.active = rt;
+        var tex = new Texture2D(1080, 1920, TextureFormat.RGB24, false);
+        tex.ReadPixels(new Rect(0, 0, 1080, 1920), 0, 0); tex.Apply();
+        var half = new RenderTexture(540, 960, 0); Graphics.Blit(tex, half);
+        RenderTexture.active = half;
+        var outTex = new Texture2D(540, 960, TextureFormat.RGB24, false);
+        outTex.ReadPixels(new Rect(0, 0, 540, 960), 0, 0); outTex.Apply();
+        RenderTexture.active = null;
+        File.WriteAllBytes(Path.GetFullPath(Path.Combine(Application.dataPath, "../Temp/uicap.png")), outTex.EncodeToPNG());
+        canvas.renderMode = savedMode; canvas.worldCamera = savedCam;
+        Object.DestroyImmediate(camGo); rt.Release(); Object.DestroyImmediate(rt);
+        Object.DestroyImmediate(tex); Object.DestroyImmediate(outTex); Object.DestroyImmediate(half);
+        Canvas.ForceUpdateCanvases();
+        result.Log("captured; canvas restored to {0}", canvas.renderMode);
+    }
+}

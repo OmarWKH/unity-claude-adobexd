@@ -60,7 +60,7 @@ bridge. Written for the next person (or agent) doing similar design-to-Unity han
 - **Delegating visual builds to subagents kept the controller's context lean.** A single screen build
   burned 100k–190k tokens in the *subagent's* context (the capture/iterate loop is heavy); absorbing
   that away from the coordinator is the whole point.
-- **A shared "playbook" file** (`.superpowers/sdd/visual-build-playbook.md`) that every visual
+- **A shared "playbook" file** (`docs/superpowers/sdd/visual-build-playbook.md`) that every visual
   subagent reads — build patterns, the capture helper, and the MCP foot-guns — gave consistent
   results without a giant per-dispatch prompt. Hand artifacts as files, not pasted text.
 - **A durable progress ledger** survived an auth interruption *and* context compaction. When memory
@@ -84,7 +84,7 @@ These cost real time to discover. If you're driving Unity through this MCP, read
   a self-contained `RunCommand` that *transiently* flips the canvas to Screen Space–Camera with a
   throwaway camera + `RenderTexture`, renders portrait (e.g. 1080×1920), writes a PNG to `Temp/`,
   then restores Overlay — all in one command. Non-destructive, deterministic, keeps the deliverable
-  as Overlay. (Saved as `.superpowers/sdd/capture-helper.txt`.)
+  as Overlay. (Saved as `docs/superpowers/sdd/capture-helper.txt`.)
 - **Do NOT touch the Game View from `RunCommand`.** `GetWindow(GameView)`, setting its size, or
   `Repaint()` **crashes the MCP bridge** ("UNEXPECTED_ERROR: Object reference not set"). This is why
   the RenderTexture route above exists instead of just setting a portrait Game View resolution.
@@ -149,5 +149,5 @@ These cost real time to discover. If you're driving Unity through this MCP, read
 
 *Net:* the design-intake + spec/plan + subagent-with-review + capture-compare loop produced a
 faithful, well-architected result. Nearly all the pain was in the Unity-MCP plumbing (capture,
-persistence, bridge fragility) — now documented above and in the SDD scratch files so the next run
-starts from a much better place.
+persistence, bridge fragility) — now documented above and in the surfaced SDD artifacts
+(`docs/superpowers/sdd/`) so the next run starts from a much better place.
